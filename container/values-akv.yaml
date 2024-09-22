@@ -1,12 +1,10 @@
-
 appBackend:
-  # Azure Key Vault is enabled 
+  # Azure Key Vault is enabled
   azureKeyVault:
     enabled: true
     tenantId: b021b1af-967f-4048-91fc-695d0dfac1a9
-    userAssignedIdentityID: da70996b-57a3-48a3-811a-7f06ef7e2804
-    keyvaultName: lab2akv
+    userAssignedIdentityID: 294b5b37-234c-4178-b009-d191f6fc2176
+    keyvaultName: lab2user28akv
   # Value is the object name if Azure Key Vault is enabled
   mysqlPassword: "MysqlPassword"
   redisPassword: "RedisPassword"
-
