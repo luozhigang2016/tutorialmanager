@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tutorialmanager.fullname" . }}
+  labels:
+    {{- include "tutorialmanager.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tutorialmanager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "tutorialmanager.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "tutorialmanager.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: JVM_OPTS
+              value: {{ .Values.appBackend.jvmOptions }}
+            # - name: SPRING_PROFILES_ACTIVE
+            #   value: prod,default
+            - name: MYSQL_USER
+              value: {{ .Values.appBackend.mysqlUser }}
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              #!/bin/sh
+              {{- if .Values.appBackend.azureKeyVault.enabled }}
+              export MYSQL_PASSWORD="$(cat /home/app/secrets/{{ .Values.appBackend.mysqlPassword }})"
+              export REDIS_PASSWORD="$(cat /home/app/secrets/{{ .Values.appBackend.redisPassword }})"
+              {{- else }}
+              export MYSQL_PASSWORD="{{ .Values.appBackend.mysqlPassword }}"
+              export REDIS_PASSWORD="{{ .Values.appBackend.redisPassword }}"
+              {{- end }}
+              echo "Java Options: $JVM_OPTS "
+              java $JVM_OPTS org.springframework.boot.loader.launch.JarLauncher
+
+          volumeMounts:
+            - name: app-config
+              mountPath: /home/app/config/application-prod.yml
+              subPath: application-prod.yml
+            {{- if .Values.appBackend.azureKeyVault.enabled }}
+            - name: azure-vault-secrets
+              mountPath: "/home/app/secrets"
+              readOnly: true
+
+            {{- end }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: {{ include "tutorialmanager.fullname" . }}-configmap
+        {{- if .Values.appBackend.azureKeyVault.enabled }}
+        - name: azure-vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "tutorialmanager.fullname" . }}        
+        {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

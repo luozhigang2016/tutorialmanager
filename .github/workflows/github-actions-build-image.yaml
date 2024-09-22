@@ -1,0 +1,57 @@
+name: Build Tutorial Manager Backend Image
+run-name: ${{ github.actor }} is Building tutorialmanager-be image 🚀
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - "backend/**"
+  workflow_dispatch: {}
+
+jobs:
+  Build-Tutorial-Manager:
+    runs-on: ubuntu-latest
+    steps:
+      #################
+      - name: Use Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.9.x"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: lab2user28acr.azurecr.io
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }}
+      #################
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      #################
+      - run: npm install -g pnpm @vue/cli
+      - run: pnpm install --dir ./frontend
+      - run: pushd ./frontend && pnpm run build && popd
+      - run: mvn -f ./backend/pom.xml -DskipTests clean package
+      - run: cp -r ./frontend/dist ./backend/target/
+      #################
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./container/image
+          build-contexts: |
+            bindir=./backend/target
+          push: true
+          tags: lab2user28acr.azurecr.io/lab2/tutorial-manager-be:latest
+      #################
+      - run: echo "🍏 This job's status is ${{ job.status }}."

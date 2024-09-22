@@ -1,0 +1,115 @@
+# Default values for tutorialmanager.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Backend application-prod.yaml config
+appBackend:
+  jvmOptions: '-Xmx800M'
+  mysqlUser: "root"
+  mysqlPassword: "ToBeChanged"
+  redisPassword: "ToBeChanged"
+  azureKeyVault:
+    enabled: false
+  config:
+    lab2:
+      tutorial-manager:
+        domain-manager:
+          cacheExpirationSec: 60
+          wordBlackList:
+            - hacker
+            - crack
+        infra-cache:
+          provider: redis
+    spring:
+      profiles:
+        active: prod,default
+      datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://mysql:3306/tm?allowPublicKeyRetrieval=true
+        username: ${MYSQL_USER:root}
+        password: ${MYSQL_PASSWORD}
+      data:
+        redis:
+          host: redis-master
+          port: 6379
+          password: ${REDIS_PASSWORD}
+      jpa:
+        properties:
+          hibernate.dialect: org.hibernate.dialect.MySQLDialect
+  
+replicaCount: 1
+# Image
+image:
+  repository: lab2acr4bow.azurecr.io/lab2/tutorial-manager-be
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "webapprouting.kubernetes.azure.com"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
